@@ -1,0 +1,253 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brain Vault</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0c0d14;
+      color: #f1f1fa;
+    }
+
+    header {
+      padding: 24px;
+      border-bottom: 1px solid #292a3b;
+      background: #12131e;
+    }
+
+    header h1 { margin: 0 0 6px; }
+    header p { color: #a5a7c2; margin: 0; }
+
+    main {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 0 18px;
+    }
+
+    .panel, .note {
+      background: #171927;
+      border: 1px solid #2c2e43;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    input, textarea, select, button {
+      font: inherit;
+      border-radius: 8px;
+      padding: 11px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      color: white;
+      background: #10121d;
+      border: 1px solid #373950;
+      margin: 6px 0 12px;
+    }
+
+    textarea { min-height: 100px; resize: vertical; }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      background: #8b7bff;
+      color: #101020;
+      font-weight: bold;
+    }
+
+    button:hover { filter: brightness(1.12); }
+
+    .delete {
+      background: #39212c;
+      color: #ffb7c5;
+      margin-top: 12px;
+    }
+
+    .muted { color: #a5a7c2; }
+    .tag { color: #b7aaff; font-size: 13px; }
+    .note h3 { margin-bottom: 8px; }
+    .note p { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .empty { text-align: center; padding: 30px; color: #a5a7c2; }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🧠 Brain Vault</h1>
+    <p>Your ideas. Your knowledge. Your universe.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Capture a thought</h2>
+
+      <form id="noteForm">
+        <label for="title">Note title</label>
+        <input id="title" required maxlength="120"
+          placeholder="e.g. Cyniscism">
+
+        <label for="category">Category</label>
+        <select id="category">
+          <option>Science</option>
+          <option>AI & Technology</option>
+          <option>Psychology</option>
+          <option>AG Talks</option>
+          <option>Personal Ideas</option>
+          <option>Other</option>
+        </select>
+
+        <label for="content">Your notes</label>
+        <textarea id="content" required
+          placeholder="Write what you learned or thought about..."></textarea>
+
+        <label for="source">Source URL (optional)</label>
+        <input id="source" type="url"
+          placeholder="https://example.com">
+
+        <button type="submit">+ Save to Brain Vault</button>
+      </form>
+    </section>
+
+    <section>
+      <div class="topline">
+        <h2>Your knowledge</h2>
+        <span class="muted" id="count">0 notes</span>
+      </div>
+
+      <input id="search" placeholder="🔎 Search your notes...">
+      <div id="notes"></div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("noteForm");
+    const notesArea = document.getElementById("notes");
+    const search = document.getElementById("search");
+
+    let notes = [];
+
+    try {
+      notes = JSON.parse(
+        localStorage.getItem("brainVaultNotes") || "[]"
+      );
+      if (!Array.isArray(notes)) notes = [];
+    } catch {
+      notes = [];
+    }
+
+    function saveNotes() {
+      localStorage.setItem(
+        "brainVaultNotes",
+        JSON.stringify(notes)
+      );
+    }
+
+    function renderNotes() {
+      const query = search.value.toLowerCase().trim();
+
+      const filtered = notes.filter(note =>
+        [note.title, note.content, note.category, note.source]
+          .some(value => value.toLowerCase().includes(query))
+      );
+
+      document.getElementById("count").textContent =
+        notes.length + (notes.length === 1 ? " note" : " notes");
+
+      notesArea.replaceChildren();
+
+      if (filtered.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = notes.length
+          ? "No matching notes. Try another search."
+          : "Your vault is empty. Add your first idea above!";
+        notesArea.append(empty);
+        return;
+      }
+
+      filtered.forEach(note => {
+        const card = document.createElement("article");
+        card.className = "note";
+
+        const title = document.createElement("h3");
+        title.textContent = note.title;
+
+        const tag = document.createElement("div");
+        tag.className = "tag";
+        tag.textContent = note.category;
+
+        const content = document.createElement("p");
+        content.textContent = note.content;
+
+        card.append(title, tag, content);
+
+        if (note.source) {
+          const link = document.createElement("a");
+          link.textContent = "Open source ↗";
+          link.href = note.source;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.style.color = "#b7aaff";
+          card.append(link);
+        }
+
+        const date = document.createElement("div");
+        date.className = "muted";
+        date.style.marginTop = "12px";
+        date.style.fontSize = "12px";
+        date.textContent = "Saved " + note.date;
+
+        const remove = document.createElement("button");
+        remove.className = "delete";
+        remove.textContent = "Delete note";
+        remove.addEventListener("click", () => {
+          notes = notes.filter(item => item.id !== note.id);
+          saveNotes();
+          renderNotes();
+        });
+
+        card.append(date, remove);
+        notesArea.append(card);
+      });
+    }
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+
+      const note = {
+        id: crypto.randomUUID(),
+        title: document.getElementById("title").value.trim(),
+        category: document.getElementById("category").value,
+        content: document.getElementById("content").value.trim(),
+        source: document.getElementById("source").value.trim(),
+        date: new Date().toLocaleDateString()
+      };
+
+      if (!note.title || !note.content) return;
+
+      notes.unshift(note);
+      saveNotes();
+      form.reset();
+      renderNotes();
+    });
+
+    search.addEventListener("input", renderNotes);
+
+    renderNotes();
+  </script>
+</body>
+</html>
